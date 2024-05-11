@@ -1,0 +1,1081 @@
+5/10
+https://deeplearning.cms.waikato.ac.nz/user-guide/class-maps/IMAGENET/ to get the right classes i thinks
+__________
+5/9
+goddamit the labels match, https://huggingface.co/datasets/imagenet-1k there is a list to see em.  spot checked lots.
+
+see what it is outputting? yeah i like that.  in eval have it run a seperate validate_debug, and have that output the labels and preds.
+
+_________
+5/8
+christ.  i have it from hugging face.  the shit from imagenet had no labels so, that was useless.  
+
+source venvHF/bin/activate
+export HF_DATASETS_CACHE=/projectnb/textconv/distill/mdistiller/data/
+huggingface-cli login
+python -c "from datasets import load_dataset; dataset = load_dataset('imagenet-1k'); print(dataset)"
+
+i think earlier when i did it without specifying the datasets cache it goofed up.  
+
+also, i killed imagenet_old.  i was nervous about the quota
+
+train/test split erred because pillow.  its running.
+fix.py will put the dataset into the format that mdistiller needs.  and the classes look right.  gj.
+
+_______________
+5/7 
+first, imagenet is loading it all together, like, it is one file that is the model and the weights.  
+and that is verified (eval_debug.sh) in scripts/eval/
+
+also, mobilenet is verified too, it gave the same output, starts at zero and got up to 0.09 percent accuracy.  
+
+dataset yo
+
+it is stored right.  it is 64 x 64 it looks like, that i'm not sure is right. 
+ok, i might have gotten a downsampled version......then it is resizing it to be like 256
+
+ImageNet-1k is what DOT is using.
+https://image-net.org/challenges/LSVRC/2012/2012-downloads.php#images
+________________________________________
+5/6
+cifar eval worked.  perfect.  79 ish percent for the teacher.  okay cool.  lets looks at eval.  
+i think 2 possibilites.  a) data.  b) not loading the weights for the teacher.  cifar seems to do it automatically, or rather, bu default.  lets look there first
+
+ok it says pretrain is by default.  i think that means it is already loaded with weights making sure...
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls["resnet34"]))
+that is line 212 in this file: https://scc-ondemand1.bu.edu/node/scc-wl1/3944/edit/mdistiller/mdistiller/models/imagenet/resnet.py
+
+made eval_debug, checking to make sure the checkpoint is loaded correctly. doing imagenet rn
+the images look like images.  is there not a normalization thing happening in eval?
+
+in 
+there is this line 118 in https://scc-ondemand1.bu.edu/node/scc-wl1/3944/edit/mdistiller/mdistiller/dataset/imagenet.py: test_loader = torch.utils.data.DataLoader(test_set,
+        batch_size=val_batch_size, shuffle=False, num_workers=16, pin_memory=True)
+        num workers is set to 16.  can that goof it up?
+        
+the transformation in there looks to be set up right.  that could be worth looking at.  
+
+______________
+5/5
+got the eval scripts written and running for all the imagenet and tiny imagenet teachers i am using.  one for cifar as well as a cave canary
+
+__
+
+5/4
+
+got the basic ones running.  used their exact thing, might need an A100 for imagenet.  will see
+okay, if i am checking the data....just validate.  don't train yet.  get their models and validate on the data i have.  
+
+________________________________________________________
+4/29
+imagenet running for 2 is not doing enough.  there are some that are increasing tho.  lets add epochs
+
+upping it to 15 (it ran 2 epochs with 1:08 on the wall clock.  so, multiply by 8 and your set.  15 is a cute number.
+
+sv2 on tiny imagenet has an issue with gradient shape.  ahhhhh.  skipping for now.
+
+
+__________________________
+4/27
+mobilenetv2 key didn't work?
+
+there is no mobilnetv2 in there rn.  its v1.  oops
+i specified the wrong ones for imagenet.  fixed em.  that was 109 - 116 resubmitted from qsub_59.sh
+
+alright, got it i think.  their link was dumb.  it was here:https://github.com/megvii-research/mdistiller/releases
+
+fixed both.   submitted some imagenet 2 epoch single var perturbation experiments.
+___________________________
+4/26
+got tiny imagenet configs and dataset. will test before submitting
+the errors were negative lambdas. not worrying about those
+
+imagenet and tiny imagenet lrs are both high: 0.2.  experiment with that
+also, right now i have imagenet at 10 epochs.  na.  reduce; 2!
+
+tiny imagenet at 20 rn.  
+
+build a flatfile guy that looks in each epoch of worklog.
+
+flat_files_imagenet_partial will return best acc by looking at individual epochs.  so yeah.  use that for imagenet/tiny imagenet
+______________________________________________________________________________________
+4/24
+need a new teacher now.  beat it with snv1 and v2
+
+___________________________________________________________________________
+4/23
+9 distillers beat last sota for 32x4 8x4.  mix_II is at 77.98 lets fucking go
+alright, mix_vi (r,max) all ran.  iterate on those rn
+
+other networks are running rn (mix_ii).  
+the ..._other_ files are resnet56 teacher, resnet20 student:71.63 is best (there is a messed up config, the 77 max is wrong) i need to beat:71.97.  there are more running.
+
+____________________________________________________________________________
+4/19
+when i saved MIX_VI_R i had an else without a : and it fucked everything up lol
+april_19_resub has the ones to be reran, just qsub that.  debug first.
+i have some that ran for the other nn, those work.  it looks like it is the else[:] for all of em.  debug you bitch.
+_______________________________________________________________________________________________________________________
+4/18
+mix_vi, random, max
+random is did.  looks okay too.
+got em.  making configs.  unsure about max, idk if that will maintain the comp graph
+duplicating now. 
+
+also, mix_v got to 77.28, with 23 tries.  adding mse helped.  
+also, for max, i don't remeber but my scales might not all be dead on.  if one of them mins out at 1 and others at 0, doing max might give me issues ya know.  will mess later.  R will work no prob.
+___________________________________________________________________________________________________________
+4/17
+i want to make mix_vi which will be all of em.  and then i want to make mix_vii which will let me set all the stuff, then randomly pick one of em. i also want the one that lets me pick the max loss to use as the loss for that it..
+
+also, just for reference, for resnet56:resnet20, the teacher has 72.37, the sota is 71.97, i just got 71.05
+for resnet32x4:resnet8:4 teacher has 79.42, last sota is 76.64, i have 77.27
+___________________________________________________
+yeah, do the rest of the mixes, then i want to randomly pick a loss to use, then i want to do one for a few epochs and swap to another, maybe in a sequence? i also need to print all the losses everytime, see that in the output.  see how all of em fluctuate.  what if you only backpropagate with the highest one? that is interesting.  
+
+https://github.com/megvii-research/mdistiller/blob/master/mdistiller/engine/trainer.py#L116
+to add to the output? see all the various losses? what about validate? i think i make a second train file.
+https://github.com/megvii-research/mdistiller/blob/master/mdistiller/engine/trainer.py#L125 takes a dict that is made in 116, just mess with that? can i get into the distillers loss dict?
+https://github.com/megvii-research/mdistiller/blob/master/mdistiller/engine/trainer.py#L167
+there is the loss dict
+_______________________________________________________________________________________________
+4/15
+mix 2 is 77.27 wtfis goooood
+it looks like the batch size is a hyper param, which makes sense.  too big makes so much noise, too little and yeah, nada.  i wonder if i could increase it as time goes by? maybe? will mess.  
+
+i need a trainer i think.  
+
+maybe add mse to mix_ii?
+
+mix_v has mse, batch diffs, and macdm both axes.  
+
+mix_vi, probs my last, will have that along with the multi axis interactions.  oh shit, i could do interactions with the batch difs as well.  so theres that lol. 
+
+also, trying mix 2 oh the other resnet teacher student pair.  gimme 72 baby.  
+
+_______________________________________________________________________________________________________________________
+4/14
+6 are winning! and I beat all time.  77.06 biiiiitch
+Mix_II did it.  that is batch differences and multi axis cosine dist
+i may add mse to that?
+
+also, mix 4 had major gains.  
+
+
+___________________________________________________________________________________________________________________
+4/13
+paid taxes, that sucked but i think im in the black
+5 distillers are above now!! sweet.  finetuning rn
+the next and maybe final mix should have all of em together.  see what happens.  
+_______
+4/10
+BLDCD doesn't have any weight.  and i want to change that.  i think doing higher cd early might help.  gonna try that.
+
+okay i did work.  mix 3 should work this time.  type mismatch in cfg.py (int v float in the default)
+
+bldcd didn't have a weight and that seemed to help lots in others.  added and varied it.  
+
+bldcd2p had good results and few tries.  it also didn't have a generic loss.  addit it and mse and cd(vanilla) to mix_iv and varied the weights. 
+
+smell ya later nerd.  
+
+
+________________________________________
+4/9
+gj
+depression is back.  and how.
+
+mix sldmse and macdm made it
+mix_II is bld and macdm stuff.   
+macdm and one dim of interactions.  and the other
+
+then run stuff
+
+fix resnet56 configs. when you copied it didn't fix the name right and it pulled in 8x4 results.  sorry your sad sad boy.
+make a trainer that can adjust stuff as epoch advances.  not tonight.  
+you could add more data samples or classes to macdai as epochs advance? try that with my piecemeal ones first.
+
+_______________________________
+4/6
+jesus birthday lol
+
+did lots of hp tuning on mac series, and bldcd series.  took off gradacc.  macdm beat sota, and it was improving with decreasing lr.  dug into that.  bld alternatives beat it as well.  in the mess arounf notebook i have the full outer interactions working, every batch with every class interaction, then do the cosine distances along 2 subsequent axes, and you get all the interactions.  will use that too.
+
+__________
+4/3
+might do macdp but not cross product, just not addition like the first.  see what that do.  
+
+also, the interactions between datapoints and then doing that cosine dist, thats cool too
+
+my expanded thing i think is okay, it seems to be zero under a lot of the same conditions as the macd series.  which, is okay i think.  my toy examples were giving me the same values for macdp and macdm, interesting.  
+macdm_0 seems to have been too low a lr.  it didn't change when it dropped to a lower one.  so.  nice maybe.
+
+____
+4/2
+Depression and boogers wont keep me down!
+
+okay, i made the multi-axis cosine distance.  
+
+I came back to the multiplicative issue.  it makes it so it is a multiple of the right logits.  which, once you softmax of argmax doesn't seem to matter. 
+
+make the pivot table babay
+
+okay, first pivot.  first off i do think we exhausted it on the resnets.....
+batch constrastive stuff should be ran more.  see what mac series does.  then pivot again.  get an idea of what to do.  
+
+
+_________________________________________________
+3/27
+added some more distillers.  scaled mse to try in distillers nb
+same with alter product.  that could be cool with mse as well
+
+3/26
+might try messing with BLDCD2P_6_5 (has weight decay 0), so lets see if the bld is actually a generalization promoter.
+
+how about 3?
+
+BLDCD2P_14 seems to have the same loss pattern between train and test, but the accuracy seems to keep up with it? iterate on it plz
+
+BLDCD2P_13 similar, seems to stay closer
+BLDCD2P_13_0 seems to be climbing? train longer?
+
+the 3d version is done in distillers, but its slow...has an einsum so yeah
+_____________________________________________________________________________________________________________________
+3/25
+
+ok.  first off endorphines.  BLDCD2P got 76.37.  77.03 is my prev best with SLDMSE.  so.  gj.  
+run lots.  
+
+first, variations on the winner.  
+______________________________________________________________________________________________________________________________
+3/22
+
+okay, BLDMSEP is still like, steep increasing yo.  run it longer.  or increase the lr? increased lr is in the queue.  let it finish? yeah see what a higher lr does before you add a longer thing.  that is way cool tho.
+also a thought, i might add 1 to the losses so you can't minimize the loss by getting just one of them to work.  that isn't a bad idea.
+
+bld already is minimized at a number above zero, do it with mse as well? that is interesting. make that a hp maybe?  if you add 1
+
+ditto for the others.  i don't want minimum to be zero.  it needs to be 1.  otherwise you get overly obsessed with one of the losses.  i want both to be low.  
+
+loss_prod = (1 + loss_mse) * (1 + loss_bld) i did that in bldmsep.   
+
+bldcd stays the same (its just adding so no bigg)
+but bldcdp is now 2- for the cosine dist stuff
+
+____________________________________________________________________________________________________________________
+3/21
+
+OKAY, so mse is not on the right scale.  so, eventually it dominates the loss? with grad_acc it looks like it is doing better with higher mse.  so. product? or use cosine dist the whole way.   
+
+i have BLDCD (batch lable dist cosine dist.  scales them correctly)
+and i have BLDSMEP (....product) which i am hoping makes it so they continue to decrease both.  
+
+i will add BLDCDP, well, now.
+
+submitted.   celebrate sad boy.  you just made 3 distillers and ran like, 40 experiments in 1 hour
+__________________________
+3/20
+
+might try sldmse with grad_acc? that isn't a bad idea.  spin those up when these are done.  
+just add em.  mo biggy daddy.
+
+those are made and submitted.
+
+qsubber_chain puts to the lates qsub submit file in /projectnb/textconc/distill/mdistiller/comfigs/qsub_batches that looks to be formatted better than copying from the terminal echo 
+
+later that night:
+the 0_x grad acc series, changing the lr just changes when it peaks.  it doesn't look like it is the lr.  maybe turn up the mse? now that is learns the inter relationship it can mimic that on whatever scale and it collapses? what if mse happens every epoch and the bld only happens every so often? that seems annoying.  but, it would only make changes that were consistent even after the mse stuff was updated? thats interesting.  maybe.  2 seperate training situations? competing? wait for results.
+also, it might make sense to have the number of accumulations increase.  like, there will always be noisy inputs, but if you were to do very large accumulations, the noise should average out right? i wonder if that is a thing? 
+
+also, ponder mse.  if it is accumulating, does that do someting goofy? im not sure.  
+__________________
+3/19
+terrible day.  bad interview with tidal (maybe bad), and a call from citizens.  
+
+got sldmse for alternative nets submitted.  messing with a different batch size, peaked at 71.26 with batch 64.  so yeah.  did some variation with 256 (after a succesful high run)
+
+imagenet.  one ran.  the chaining works, but it only got 0.19.  i think waiting a few batches could help, like in bldmse.  will mess.  gonna run some more chains. 
+
+alright, there wasnt a space after config-e then error file.  fixed that i think.  submitted a few iterations of 1_3 chain (didn't nan) i wonder if that is initialization?
+
+alright grad acc slapped.  it got to like, 30 percent, then collapsed.  chat gpt agreed its lr.  which makes sense, if you are accumulating over batches, you would have to at least divide by num batches to be back to the original lr, and that may not be on the same scale.  running for lots of smaller lrs.  will see what i can get.   
+
+spawned some (non-chained) imagenet scripts as well.  yay.  sorry you such a sad boy.  
+___________________________________
+3/16 
+sldmse isnt going over 71.26.  i tried lots. 
+i have a chain for imagenet in the queue.  it is taking long to get to the front of the line
+
+bldmse i am running lots.  added in grad_acc as a trainer, it accumulates a specified number of batches gradients before performing updates.  testing that too.
+
+i have my loss function that can change the number of differences used.  that is next thing i think
+
+
+___________________
+3/15 
+sld had some hiccups, re ran most of those.
+imagenet still in queue.  
+bld.  so, sld works.  that is one per item right.  what if, all of them together is just too much noise.  one dif works.  now lets add more to it.  so like, batch of 1.  batch of 2.  etc.   then maybe that increases as it trains?
+
+or, what if it just needs to accumulate a lot of gradients? wait x batches before backprop?
+
+okay, in my bld debugger i have my pseudo_batch thing.  this will zero out certain columns.  i think that maybe starting with 64 batch label differences is just a collossal amount of noise, expecially starting with some initialization.  so yeah.  if you do 1 it is all the differences with the first datapoint's logits.  2 looks at the first 2, and so on.  it is robuts to numbers larger than the batch.   but yeah.  i will need a trainer to update the pseudo_batch in the loss function.
+___________________________________________________________________________________________________________________________
+3/14
+
+okay, so pragmatism. 
+
+submit10hrt2.sh -- 20 hours for 4 v100s didn't run.  
+submit10hrt3.sh -- didn't run.  it was 4 v100s for 40 hours. 
+submit10hrt4.sh -- didn't run.  it was 4 v100s for 20 hours. 
+submit10hrt4A40_4.sh --didn't run 4 A40 x 4.  
+submit10hrt4A100.sh -- ran, but erred.  2 A100s for 20 hours.  is this worth pursuing? i think.  get it on v100s first.  
+
+ok, lets run image net for the 10 hours, and find something that is increasing in acc.
+
+ok i got 100 epochs imagenet jobs running.  they are using SLDMSEAVG
+lets do some with SLDMSE too 
+
+alright.  imagenet is running.  4 v100s for 8 hours.  to do: make an env that it can run with A40s? A100s?  I can get 2 A100s at least.  maybe doing it for 10 hours? ask bk
+
+next, check cifar stuff
+sldmse - for res 56 to res 20 71.26!! more epochs helped.  do a range.  one of those should be more epochs haha. trying to be 71.97.  reduce mse, negative mse? try once.  increase epochs later.  
+bldmse - did a range for lrs.  i was mostly neat 0.001, 0.002, 0.005.   i want to try some low ones too.  
+
+Then the v100 resume script.  it should ask if the first one should resume.  or maybe check? yeah check.  if it is in there resume, else don't.  
+
+go
+___________________________________________________________________________________________________________________________
+3/13
+i did work yesterday, i just didn't take notes lol
+also.  i think i nailed that citizens interview.  Kim seems cool.  
+
+BLD has something wrong.  mean makes it generate numbers now, that is good.  but yeha.  there be a bug me hardies.
+fix her.  
+ took out the eye part.  i wonder if that is goofing stuff up.  submitting some.  real simple math too.  lets see how she do.
+ 
+now, qsubber.  first, i need to see what actually ran of the weird ones.  find that qsub file, see the times (include weight time) and make the chain qsubber.
+
+dg_68 ran:4 v100s for 10 hours.  got to 20 epochs.  not bad. 
+dg_72 erred.
+dg_74 erred.  
+
+okay.  lets chain v100s
+qsubber_chain almost done.  fix error files.
+
+
+_________________________________________________________________________________________________________________________
+3/11
+Christopher:
+more gpus.  data parallel.  
+do an A100.  100% gpu is the maximum.  
+
+8 workers.  
+
+4 v100s? multiple.  
+
+
+___
+3/9
+going to try and get more workers with cifar real quick. BLD is working.  submitted lots of those.
+also, res 56 res 20 is at 70, sota is 71.97 i think.  not bad
+
+i got some cifar workers experiments going, using submit10hr_16w_1.sh as well as submit10hr.sh
+
+now, BCP
+
+
+
+
+_______
+3/8
+dune slapped
+okay, so bothe SLDMSE_R50MNV1_1_AVG16 and SLDMSE_R50MNV1_1_AVG32 ran, and got 13 epochs.  so.  it isn't just upping num workers
+i think i may need to specify ram?
+
+so, it looks like pe omp and worker_num are related but not the same.  pe opm is how many cpus.  num workers is processes.  we want num workers slightly less.  ram, well, they all need ram.  
+
+qsubber and stuff slaps yo.
+i have new cifar running, i have bld running on old cifar, and i have imagenet running to determine workers, get the speed up to something i can iterate on.
+now, BCP!
+later.  apply some jobs b
+
+______________________________________________________________________________________________________________________
+3/7
+fix experiment name, it isn't getting changed and it needs to every time. done
+
+so run duplicator.py script_to_copy and yaml path (do one per day)
+    this can be ran as many times for as many variables (put em all into one yaml list)
+then run replace_name.sh (that updates the experiment names)
+then run qsubber.  
+then run the file qsubber makes.  this could be smoother.  not sure i want it to be tho, catch stuff 
+
+then deal with imagenet.  is it possible that sum is messing stuff up? lets try another solver.  KD first.
+
+did 16 and 32 workers with KD.  is my loss not parallelized? see that speed and losses
+also rean SLDMSEAVG.  does the sum turn into nan? maybe.  
+
+
+BLDMSE is made.  test that.  
+
+
+_________________________________________________________________________________________________________________________
+3/6
+imagenet is slow af.  also, need to update project names so they save to different places.  
+
+
+
+okay, i have my automated single variable perturber.  it is in scripts.  it writes a list of yaml files (as wel as make them)
+run it multiple times, add all those yamls files, then qsubber sets them up on the scc. gives them unique job names, and puts em in the queue.  run one per session ya know.
+
+imagenet was pickled, it looks like i have it unpickled correctly. i have part 2 to unpickle is all. next session.  after lunch haha
+
+______________________________________________________________
+3/2/2024
+they are using downsampled imagenet, not imagenet.  it is imagenet 64x64 1k with 1.2 ish million.  so when they say imagenet, that is just a unspecific lie bastards.  thow, this is 12 gigs instead of terabytes so, a lie in my favor lol. 
+
+https://image-net.org/download-images.php
+https://patrykchrabaszcz.github.io/Imagenet32/ seems to describe it.  i think i need part 1 and 2, and then val 64x64 
+
+i got 1 and 2.  
+
+ok.  imagenet data is downloaded and unzipped.  gj.  go have a saturday.
+
+___________________________________________________________________________________________________________
+3/1/2024
+
+okay, copier needs to be more robust.  i want to move 
+
+i made new folders, _bcpmse (batch contrastive products mse), _bldmse (batch label differences mse) and _sldmse(shuffled label differences mse)
+those are in cifar.  doing it in each data set....
+these distillers need to be made as well.
+
+i want one other architecture (same datat) resnet 56 -> resnet 20 (https://arxiv.org/pdf/2203.08679.pdf pg 6 on the top)
+
+and another dataset (which, they use a dif architecture too so). (pg 7 of the above)
+dif architecture and dif data... Imagenet with resnet50 -> mobilenet v1
+
+now, scripts needs to be neater.  i want to organize them the same way as configs, method and teacher student pair.
+looks good nerd
+
+now do sldmse into the other dataset.
+
+i think i can specify the -N to give the jobs names too.  might be goot to change std out and std_err as well...
+
+next i gotta m
+testing the script submission thing now.\
+
+___________________________________________________________________________________________________________________________
+
+2/28/24
+i think that doing Batch contrastive cd and mse, are such similar tasks that it isn't being extra helpful.  making
+BCP with a normal objective.  LI lost interaction? maybe?
+BCPLI. does the product across the expanded batch, but before collapsing it can do an interaction after the squash function with the objective.  that could be mse or cosign dist.  
+
+also, if i do output of FLP into another FLP, i think i need to subtract the 1. i did that in the first one already.  gj past dallin.  thanks present dallin -from past dallin, but in the present.
+
+
+
+
+_____________________________________________________________________________________________________________
+2/27/24
+for later: bcp needs to be wired up.  and then yeah, spawn the other distillers below.
+
+big thing today is the new loss function from google sheet notes.  I think i want to call it BCP
+Batch Contrastive Product.  not bad.  
+
+BCP will have a few permutations too i think.  
+the agg function after will change i think.  so lets see.  
+first one, BDMSE combined to make one function.  then dot product, then average.  
+second, do that, then non linearity, then multiply.  could multiply just half, as well as along an axis, as well as the whole goddamn thing.  do i need to flatten the mse bit? maybe.  not sure.  oh, just weight it? 
+lets make this one thing and hyper param it.
+
+k.  coded it up with options.   option 0 is just mean of the interactions.  option 1 is a single interaction.  2 is interactions along the batch , and 3 is full product collapse.  
+i wonder if i even need mse? but SLDMSE makes me think it is beneficial.  idk im cool lets run it
+well, after my interview lol.
+
+SLDMSEAVG SLDMSEAVG_7 is the winner, the weight was 1 and the lr is 0.1.  
+BDAVG BDAVG_4 with lr of 0.008
+BDMSEV BDMSEV_4 with mse weight of 1 and lr of 0.008 okay so that average seems to have just changed the scale.  tune these damnit
+BDMSE BDMSE_5 got to 61, but this is very different.  i am quite pleased it is learning at all lol.  weight is 0.5, that makes sense these are both expanded batch calculations, and lr was at 0.005.  tune em daddy
+
+i havent given up on random lr yet
+
+
+__________________________________________________________________________________________________________________________
+2/26/24
+later that day...
+make a first one, and then do copys
+SLDMSEAVG
+    duplicate SLDMSE_X14
+    SLDMSEAVG_1 works.  duplicating.
+    gotsome made and submitted
+
+BDAVG
+duplicating BD_96612 for all three of these.
+
+BDMSEV
+
+BDMSE
+
+___________________
+okay, i think sldmse is wrung out.  77.03 is the best, feels great to have improved again lol.  
+one SLDMSE spawn, do the extended lr scheduler with 0.1 decay.  see what happens.  try one with the second step going for a long time.
+
+now bd
+
+then new shit
+
+4 new distillers:
+SLDMSEAVG: i was using sums on the others, these use averages.  
+
+BDAVG
+   ditta above.  uses average instead of sum.  got rid of the subtract from the denom.  lowest score is 1
+   
+BDMSEV this is BD (batch differences CD) with vanilla (mean reduced) mse.  
+
+BDMSE is bd + batch difference mse.  Intrinsic batch differences.  as the model outputs approach the teacher outputs, it approaches regular mse.  optimistic for this one.
+
+
+resub everything, the distiller changes goofed it up.
+
+after lunch
+
+_____________________________________________________________________________________________________________________________
+2/25/24
+77!!
+ooh baby we on a roll. 
+
+ok, BD first:
+    9_6 did the best.  increased batch size helped! that is a very good sign. lower lr helped, but that may have been in concert with the larger batch size.  mess with that some more 
+    
+    b_s ++, lr~~, wd+++
+    
+    
+ now sldmse.   77 bitch boy!!!!!!
+ 
+ mse range.  big changes. check em all. momentum up maybe? weight decay range.  batch size too.  and scheduler.  first 100 then reduce it by, 0.5 i think. mess with scheduler and lr_decay a lot.
+ spawning SLDMSE_6_1
+ 
+ called it sldmse_x1
+ 
+    
+    
+lr scheduler, think about it as the probability of being the right value.  think about the discrete nature of a neural network? once you get down to the limitations of a float, is there enough capacity to get to the global maximum? are gradients doing what we really want? is there calculus to mess with that would point toward a global max and not a local one? how wavy is the loss landscape? i suspect it is insanely wavy.  
+_____________________________________________________________________________________________________________________________
+2/24/24
+76.87 SLDMSE_6_1
+this was a lower lr.  we going to experiment with that some more.  as well as run again. 
+run again with roman numerals.  6_1iv etc.
+
+lower momentum and lower lr both worked well.  and run longer.  spawn you bitch spawn.  
+
+spawn bd
+
+lower lr, for longer, reduce momentum?
+call it 9
+
+okay, it was the scheduler.  this thing runs for a long time.
+make a 10.  it is going to run for a long time with a 0.1 maybe?
+
+bd 10 has peomp 4.  check this after, it might take a bit with lots of extra epochs, almost double
+
+spawn 96 as well
+
+NEXT.  build Batched version of SLDMSE.  both types of mse.
+
+call it BDMSE.  but i also want to try BD+MSE which will be vanilla mse.  
+
+yeah, looking at loss.  it needs to search a long time, then reduce the lr.  i wonder how much searching it needs after.  the first bit is bumpy, and barely increasing? then it has a jump and barely bumps.  then it plateaus quickly on the final one.  i imagine the right decay rate would be huge.  i also think big batch sizes might be beneficial.  low lr, big batch size, maybe lots of steps down? i have thought this before....idk
+and also, i am looking at total loss not average.  i dk if that is an issue? ask!
+
+
+________________________________________________________________________________
+2/23/24
+okay got to 76.55! that was SLDMSE_2 
+SLDR_7_6 also improved: 76.28
+
+BD improved but not insane amount.  
+it seems for all of them reducing momentum is beneficial
+
+BD Spawn.  first off, it looks like lr and batch size are INVERSE.  try lr lower with 128.  not higher. 
+also, decreasing momentum.  also reducing l2.   higher l2 isn't doing it.  also, a higher decay seemed nice.  might try more steps of that.  
+ok did bd_25x series.  now, spawn some of those.  i want to do some with more decay steps, especially at higher decay and lower momentum
+
+ALSO for tomorrow, it follows to add mse to this.  do just mse as well as batch diff mse.  
+
+now, sldr
+spawn 76
+    the additional steps helped.  increase the decay.  decrease momentum?
+    sub spawn.  i think one with higher momentum. 
+    
+
+spawn 434 
+    decrease lr, decrease momentum, increase steps
+    
+SLDMSE
+spawn 6:
+    momentum range, lr range, decay range, epoch range.  
+    
+and now the winner:
+spawn 
+______________________________________________________________________________________________________________________________
+2/22/24
+bd
+higher lr, lower momentum decay between 0.1 and 0.8, steps
+
+BD2 spawning:
+2_2 later decay.  
+2_3 higher lr
+
+now bd4 spawn
+much higher lr for all of these.  mess with decay rate (lower), momentum range, weight decay range.
+
+bd8 has a batch of 128
+lr. then a smattering of others
+
+sldr spawn sldr 1 8 lower momentum a few times, weight decay range and rate. extend search 
+
+spawn SLDMSE_1_1
+
+momentum range, rate decay range, decay stages and rate
+omg mse weight was high, raise it yo
+donezo. 
+sucks about microsoft.
+_____________________________________________________________________________________________________________________________
+2/20/24
+beat it again! 76.23.   small victory i guess 
+build BD which, Batch differences.  qsubbing a series of those.  
+
+bd lots submitted. 
+
+ok for SLDM the lower lr got a little better.   lets mess with that.  
+
+SLDM_3_9 is what we messing with. 
+lr.  reduce
+also mess with decay.  up it i think. 
+
+
+also of note, it looks like you need a higher lr with a higher batch? lets spawn a new one with batch 64 and a higher lr.  i had one with 50 that got above 75, that is probs a good starting point.
+it also looks like, how do you say, the decay rate can only be as good as the lr.  i think that gotta be tuned first.  
+after BD finishes.   that might be major ya dig
+
+SLDR next.  i like that one
+
+more momentum did better.  that makes me think BD will do well.  
+increase it.  lr up and down
+
+
+
+____________________________________________________________________________________________________________________________
+2/19/24
+
+
+SLDR_1_3 series.  
+increase MSE weight.  X
+increase decay.X
+increase momentumX
+increase lrX
+sldr10_1 has no weight decay.  less seems to be better.  thats kind of interesting.  some of the papers talked about how this is all naturally regularized, it might not be a reg issue but an optimization issue.  sort of operating under that assumption for a bit.  i guess, don't only do that.  but my bias right now i guess.
+
+SLDM3 series: 
+increase lrX
+no weight decay X
+higher lr X with high decay X
+lower lr with high decay X
+higher weight decay + XX
+increase momentum
+decrease momentum
+___________________________________________________________________________________________________________________________
+2/18/24
+Microsoft!!!!!
+
+now, i want to make SLDMSE which does both, easy enough to make.  run some of those.  
+i am not convinced that SLDM is that much better.  just saying.  I might try that later with SLDMSE but, yeah.  i am more interested in SLDR and SLDONLY.  those i want to try magnitudes of different stuff. mess with momentum too.  
+also, plenty didn't run.  resub those.  
+
+Upping L2 hasn't been improving it colossaly.  SLM_3 series has sort of shown that.  hmm
+
+SLDONLY13_3_3_2 scheduler might be the right idea.  add that to 3
+
+SLDM_3_5 had such a low lr and lots of regularization it looks like it got stuck in a local min.  I think with the one optimization objective that makes sense.  0.0005 is too low for just SLD
+
+ - SLDR_4_3_5 looks good. add lr scheduler from 13.  and mess with a wide range of lrs.  
+
+    call it sldr 6.  made lots.
+    
+    
+now.  lets make SLDMSE
+
+Also, in R, i have the MSE as average reduction.  i think that isn't a huge issue since it has the scale, if i were to set the weight to the batch size we back to sum right.  i have it as sum right now in SLDMSE, since SLD is being summed as well.  bla bla
+    
+oh my god.  because of old pytorch version, it gets mad on better gpus lolol
+
+#$ -l gpu_type=V100 !!!!!!!
+
+
+____________________________________________________________________________________________________________________
+2/15/2024
+citizens bank!!
+no reponse from microsoft tho.  first.  moisturize your dry ass face you raisin ass bitch
+
+first,lets spawn some off of the one that kicked the most butt: SLDM3
+i want to change the batch size and the lr in tandem a bit.  i also want to mess with l2.  
+i also want to go longer epochs before reducing.  
+
+SLDM_3_1 has more l2 (0.001)
+SLDM_3_2 has 0.005
+start with those 
+SLDM_3_3 has bs 64, lr 0.001
+SLDM_3_4 is SLDM_3_3 with l2 at o.oo1
+SLDM_3_5 has a lower lr, and runs til 250 before decaying. increasing time in shell script for it.
+
+i think that is a good start.  looking at past results.
+some of the crummier ones im going to stop duplicating, adjust and run.
+
+
+Another big spawn.  SLDR4_3.  has a higher lr than the others.  overfitting, and it jumps big when the scheduler drops. 
+SLDR4_31 is just l2 stuff
+SLDR4_32 is more l2
+one with higher lr
+SLDR_4_3_3 does that
+increase the batch once
+one that increases lr and L2
+some of the 1 didn't run.  resubbed.
+
+
+
+move the scc generated stuff into old scripts...
+
+find . -type f -name "err_*" -exec mv {} old_scripts/ \;
+
+
+
+
+for later, make your flat file generator spit out a date as the name.  DONE
+/projectnb/textconv/distill/mdistiller/configs/cifar100/sld/copier.sh sld_1.yaml test.yaml
+the first yaml is the one to copy, the second gets made.  it makes the shell script too with all caps whatup
+hell, lets qsub it too hahaha
+no, i need to make alterations before qsub..piss
+
+_____________________________________________________________________________________________________________________________
+2/14/24
+microsoft recruiter and chewy!  i hate the economy.
+
+also.  weight decay in the config...
+  LR: 0.05
+  LR_DECAY_STAGES: [150, 180, 210]
+  LR_DECAY_RATE: 0.1
+  WEIGHT_DECAY: 0.0005 ##this guy
+  MOMENTUM: 0.9
+  
+is l2 i think lol.   confirm that.  but yeah.  combat overfitting.  which i am dealing with all kinds lol
+
+SLDM1_1 got to 74.9.   is overfitting.  up l2 (weigh decay). how up...do it big.  this is with a batch size of 50.  also.  i need the excel sheet.  that can be programatic methinks. do that after subbing 
+SLDM1_1 subbed
+
+SLDR_4_1 75.25! overfitting.  upping l2 
+SLDR_4_2 upped l2
+SLDR_4_3 upped lr
+SLDR_4_4 reduced lr
+subbed
+
+SLDONLY13_3_3 74.5 and overfitting.  The training set gets to 90.  
+up L2:
+SLDONLY13_3_3_1 and 2 with different decays.  
+SLDONLY13_3_4 did worse then 3, it had a lower lr.  maybe increase? did i already?
+
+SLDONLY13_3_6 is intrinsic.  overfitting.  upping decay
+SLDONLY13_3_6_1 subbed
+SLDONLY13_3_5 did better.  with a higher lr! 2 experiments.  up the lr again, and add l2
+SLDONLY13_3_5_1 higher lr
+SLDONLY13_3_5_2 higher L2
+subbed
+
+SLDR_1_1 got 75.65.  big improvement over SLDR_1.  the only change was batch size daddyyy
+SLDR_1_2 bigger batch
+SLDR_1_3 higher lr
+SLDR_1_4 increased L2
+SLDR_1_5 is all 3 together (i copied one too many so.  )
+
+subbed
+SLDE isn't working.   i'll investigate later.  
+
+SLDR_5_1 is low batch size, high lr.  tweaking this.  
+upped bs and added more l2.  it was at 68.51.  
+
+SLDM2_2 dealing with it later.  
+
+SLDONLY3_5 74.39. big overfitting.
+SLDONLY3_5_1 upping l2
+SLDONLY3_5_2 bigger batch
+
+
+SLDONLY13_3 75.4 way overfit  its batch size 10.  
+i need excel sheet.  i don't want to duplicate.  i have lots of 13_3 spawn 
+
+OK excel.  it was SLDM3 that got me 76.21.  that, jesus im a goose ass.  i was duplicating 3 not m3.  this will be fun lol
+
+________________________________________________________________________________________________________________________
+2/13/24
+sick
+
+okay, sld_m_1_1.sh didnt run restart
+SLDM1_4 got to 75.3! this was with M 1000.  interesting.  but yeah, marginal gains.  not worth i don't think.
+SLDM1_2 got to 75.17.  M is 20.  isn't hurting.  not sure its helping.
+SLDM1_3 got to 74.79.  These are all basically the same.  not sure it is improving anythin.
+
+SLDR_4 has 10 percent chance to use mse, and 10 weight on it.  got to 71.66.  This was with batch size 10.  lets up that and mess with the lr.
+SLDR_4_1 uses bs 64.  run that, see what happens. running
+
+SLDR_5 might still be tilted up.  raise lr.  it is same as 4 but extrinsic sld.  upping and submitting.  mmm.  no.  _1
+i turned up the decay too.
+
+nans in SLDE1 so i reduced E.
+
+SLDONLY13_3_2 improves at every step.  lets mess with lr and mess with batch.
+13_3 hasn't ran 
+sld_only_13_3.sh bs 64 sub
+SLDONLY13_3_4 has a reduced lr
+
+lets do 13_3_5 and 6 those but intrinsic: doneski
+
+SLDM2_1 has a good trajectory.  didn't overfit either...big batch babay
+SLDM2_2 bs 64, increased decay to 0.2 subbed
+
+SLDONLY3_4 is overfitting bigly. batch of 10.  lets up that.
+
+
+sldr_1_1 has a bigger batch size. lets see what happens.
+
+also.  lets do some other nns.
+
+sld_R_1_1.sh
+
+will setup other nn later.  i need a nap
+
+____________________________________________________________________________________________________________________________
+2/10/24
+the alternative asset traders ghosted me.  i was sad.  
+lots of results to check:
+SLDO16- 60 percent.  This was a mix between intrinsic and extrinsic SLD.  
+output_visualizer is made.  takes an output file
+SLDO peaks way early then train AND test accuracies fall.  BUT train loss decreses.  loss decreases AND accuracy drops? That needs some thinking.  There might be something here.  The mix of both causes this? correlates? what the..
+
+SLDR_2:72.43.  loss and accuracies do right.  the lr really works on the training set, but not so much on the val set.  this was   MSE_PROB: 0.5, MSE_WEIGHT: 2.0
+SLDR4 erred; no kernel.  resub
+SLDR_3 had MSE_WEIGHT at 0.5.  71.37 best.  
+SLDR5 erred, resub
+
+S13_3_1 is using extrinsic:72.06.  it improves with every learning rate decrease.  lets try longer initial lr runs.  and different batch sizes? lrs?
+S13_3_2 does 200 epochs before reducing.  compare that first.  Then mess with other hp
+
+3_4 had the 10 epochs at the beginning.  not sure it did much.  lets increase it.  no copying.  it wasn't that interesting lol
+
+KDS (which just added differences to KD) got to 70.56.  not obsessed
+
+SLDM_1 SLDM with M = 10 (targets multiplied by 10, intrinsic sld)
+75.97.  okay now we cooking.  loss looks like it is overfitting, but, accuracies improve so...hmm
+SLDM_2 is extrinsic sld: low, but it is increasing much better than intrinsic.  lets run that first bit for more epochs.  
+SLDM_2_1; subbed
+
+SLDE_1;  exponential and some addition too for stability.  nothing happened.  turning down E by a lot haha.  under 2.  1.3
+SLDM_1_1 - 4.  upped to 50 batch size.  im overfitting too much.  and changed M, 20 - 1000.  1_1 is still M = 10
+
+I have seen lots of overfitting.  I am wondering if my batchsize is too small? i think i need to up those.  next time.  i can feel the sad creeping in..
+
+sldr_1_1: up the batchsize me thinks and up the mse weight.  i wanna explore more.
+
+
+
+
+________________________________________________________________________________________________________________________
+
+2/8/2024
+goofed 16.  it ran in 3...
+submitted
+15 collapsed (mixes intrinsic and ex)
+
+3_4 erred; no kernel.  resub
+lets try 13_3 for more time, it didn't finsih.  also, do it with extrinsic
+13_3_1 is 13 3 but uses extrinsie instead of instrinsic
+
+R_1 didn't finish, but it seemed to plateau.  messing with the hyper params.
+added sldR_2-5.  varying hyper params
+
+13_1 got 71.4   also its time to put these in an excel sheet or something.
+
+okay, 3_2 and 3_3 all peak before the lowest lr rate of the scheduler.  The scheduler may not be so important? or rather, it doesn't need lots in the lower lrs.  run for a few hundred, then decrease it for very few epochs at low rates.  or, here is a thought, with such a small batch size the low rate ends up over fitting?  or rather, over fitting on the most recent mini-batch.  it isn't getting high train error.  
+
+now, i wanna plug in my dif's to original kd..call it kds
+
+could i incorporate temperature somehow into SLDONLY? examine. That's not a bad idea.  if before doing cosine we do a softmax.  you only care about getting that one dimension correct.  the rest is dark knowlege, helpful for other shit.  that should regularize yeah? examine.  
+__________________________________________________________________________________________________________________________
+2/6/2024
+even later: 15 and 16 use the mix between intrinsic and extrinsic.  i wonder if extrinsic just needs a different lr? look back at those.  yeah, even split is good, 74 ish.  explore extrinsic more. random between those? thats interesting.  
+ random mse looks interesting.  72.64 from sldr1.  nope.  it wasnt configured right.  it ran sldonly.  fixing...
+ 
+ 
+
+
+later that day:
+10_2 completed:  weird that it sometimes doesn't run.  i think it is just an scc thing? allocates me something and the device doesn't run? idk.  
+72.77.  damn.  
+8_1 peaked at 64.32 at epoch 101...with a lr of 0.001.  i think this isn't enough exploration.   what did i do for 8_2..
+8_2 had 8 times higher lr.  so.  raise it? search longer? i like both.  8_3 and 8_4....
+8_3 is a higher lr (0.02) got to 73.98.  meh
+8_4 got 73.44 meh meh
+
+also.  the early stages are what learn.  do those more and for longer.   duplicating 3...
+3_1 runs for 600 epochs just fyi
+ditto for 3_2.  fewer decay steps
+3_3...slow slow decay.  1000 epochs
+3_4.  raise the lr and do it for 10 epochs, then reduce it to 0.005.  then slow.  math....
+
+9_2 got 74.36
+----
+14; 75.84.  not bad.  this was what..bs 10, intrinsice, 3 lr decay steps.  this line of thought has gone elsewhere.   not continuing.
+
+16; didnt run? wtf;
+
+8_1; deleted worklog.txt and resubmitted
+
+10_1;73.38. batch size 64 with lr 0.008 and lots of decays.  i think i want more time at the beginning with a higher lr.  so.  get rid of the 50 i think, and that 0.008 might be too high.  lets do 0.005 for 100, 150?  call it 10_2
+
+8_1 and 10_2 just erred, there was no cuda device to run on? wt.  
+
+9_1: 74.36
+7; 75.81
+14; 75.84
+9_2; overwrote 9_1....fixed yaml.  running both.
+8_2; 74.64
+7_1; 72.61
+
+13 is getting versions.  
+yamls: 13_1, 13_2, 13_3 have longer plateaus at the beginning, then decay.  
+making scripts;
+13_1 didn't finish.  it got high, 75.. keep running?
+13_2 got above 75 too.  messing with it.  submitting. 
+13_3 got 75.61.   
+
+okay.  now.  the new distillers.  
+1 randomly do mse.  Done.  Called SLDR.   making some scripts.  
+2 randomly to extrinsic: waiting on 15 and 16 for this.  see if extrinsic helps? yup.  after seeing 15, 16, i like this more.
+3 do differences in KL divergence.  
+4 add in logits yo.  if that bumps it over, do it.  
+
+
+____________________________________________________________________________________________________________________________
+2/5/2024
+
+it appends when you run it again which is annoying so.  deleted 7 it didnt finish. added more time.
+i really wanted to reduce the lr, but i won't first time around.  get the score, then do it.
+
+8 got 75.98.  okay babay thats dope.  thats with bs 20.  i think more epochs, slower schedule.  lower lr.  duplicating 8.  not overwriting.  this will be 8_1.  duplicate 3 and do 3_1 with the same schedule (maybe mot lr) submitted.  
+
+same with 9.  call it 9_1 submitted
+
+10 got to 74.5.  reduce lr, gradual descent, run longer.  actually, what if we increase lr.  lets try that.  and do lots of reducings.  call it 10_1
+
+11 12 13 and 14 were 3 with different initial lrs.  75.11, 75.76, 75.93, and 14 didnt finish.  finishing 14 for sure.  
+also, my thinking is, maybe a higher lr initially is beneficial? more exploration? then descend into a minima?  this makes me want to do some v2 of previous scripts.  i think thats what i want.  do some high initial lrs for 8_2, 9_2, 10_2 ? i like that.  see the scheduling with something high first.  do a 7_1 as well (bs = 5).  first, re run 14: done.
+7_1 done 
+8_2 done
+9_2, 10_2
+
+
+
+____________________________________________________________________________________________________________________________
+
+2/4/2024 late
+
+76.12.  fuckina  i got 76.12
+it was sldonly3.  that is all intrinsic differences, that is, in cosine distance formula, a is targets - shuffled targets, and B is student outputs - shuffled student outputs (shuffled in the same way ofc).  
+
+sld 3 copy and alter:
+batch size experiments: 7-10
+lr experiments are 11 - 14
+
+lets try some weighting as well.  lets put a little on extrinsic.  0.1 and 0.2. that is in 15 - 16
+
+i want to use these as a jump off point for the smoother lr decay.  run these first babay.  grandma was right! you are the handsomest boy!!!! 76.12 babayyyyyyyy
+
+also, with the slower decay it may make sense to run it longer.  will see
+
+yamls made.  doing scripts: done
+submitting!
+
+
+
+______________________________________________________________________________________________________________________________
+2/4/2024
+
+got SLDONLY working.   i think it needs to drop the learning rate more often.   i think it should decay slooow, but often.   it is learning like, fast hahah
+
+going to make one with LOTS of lr rate updates, with a high decay rate.  its sldonly5.sh
+
+5 has a decay of 0.8
+
+i want to see 0.5 as well.  a prettier curve i think
+
+_______________________________________________________________________________________________________________________________
+2/2/2024
+promising - B. Kulis.  
+
+ok.  first off, i need to see if the soft max outputs are the same after doing just the cosine dist. if they are, there is really no reason to do the one parameter.  the one param (that i think just gets optimized with mse) multiplies all the logits.  cosine dist is zero if they are a scalar multiple of each other.  so, that seperates the two?  
+
+the other is using shuffled outputs in the second part.  making both.  so yeah, thats temperature duh.  so.  i need to have the one parameter optimized by mse.  that sucks haha
+
+okay it looks like crd has extra params and i can maybe use that?  will see.  
+now i need to see where the .backward is happening because i bet i have to shut off gradients.  
+
+found the backward call: https://github.com/megvii-research/mdistiller/blob/master/mdistiller/engine/trainer.py#L166
+The very next line it calls back after summing the losses you pass via the dict.  aha!
+
+https://github.com/megvii-research/mdistiller/blob/master/mdistiller/engine/trainer.py#L189
+inherits base trainer, but then implements train_iter.  
+so, we do it that way?   i just want to fix the model forward.  looking at eval....
+
+i think i don't need the single param before doing the mse on the one scalar param.  i only need the scalar for eval? top 1 acc and all that.  i want mse for it.  but that can happen after?  i COULD (not sure i should) make it a seperate neural network, that sounds dumb.  well, except i don't have to do the nonsense gradient shit lol.  i could...ooooh, make it so the model forward just multiplies by the param i calculate.  that is interesting...
+
+except it is using top k.  so the scaling doesn't matter.  do it simple!!!!! 
+submitted.   the one param may be important.  well see.  
+____________________________________________________________________________________________________________________________
+1/31/24
+ok, the err files are ugly af.  it dumps all the outputs there. It is pretty if you look at it in a terminal, bars fill up, percentages increase, but in the err_ files it writes a line for all of those.  HOWEVER.  it made an output folder, and stores them there.  does checkpointing too.  yehaw.  you need to give them an experiment name otherwise it falls back to whatever is in tags (in the config.yaml) so.  doing that.  
+
+1 through 4 use the SLD i made.  messed with batch size and lr and weight of the losses as well.  that will be good.  
+
+now, make SLD_MSE.py.  it uses mse with targets as well as the cosine dist thing.  
+Actually, what if i just weight it differently.  like, 0.  thats not a bad idea.  add that to sld, and change the config so it is defaulted to 0 that is the right way.  wait for those 4 to run.  i want outputs for kulis tomorrow.
+
+
+_______________________________________________________________________________________
+1/30/24
+make setup.sh in this dir.  i think it will setup from nothing.  but i am not sure because of how i debugged it.  but yeah.  got it running.  i don't know if it is recognizing the pytorch module, when i list it says 1.9.0+cu letters and yeah.  this load pytorch everytime.  annoying, but it takes less than a minute so.
+
+_______________
+##for shell scripts later
+
+modules i loaded for venv (as of 1/30)
+
+(venv) [dgordon@scc-q33 mdistiller]$ module list
+
+Currently Loaded Modules:
+  1) python3/3.8.10   2) pytorch/1.9.0
+
+export PYTHONPATH="/projectnb/textconv/distill/mdistiller:$PYTHONPATH" # add to get distillers to import
+Traceback (most recent call last):
+  File "tools/train.py", line 9, in <module>
+    from mdistiller.models import cifar_model_dict, imagenet_model_dict, tiny_imagenet_model_dict
+ModuleNotFoundError: No module named 'mdistiller'
+
+
+
+
+it ran!
+python3 tools/train.py --cfg configs/cifar100/dkd/res32x4_res8x4.yaml
+was the command.  ran for 240 epochs i think, and spit this out:
+
+Best accuracy:76.05999755859375
