@@ -1,0 +1,40 @@
+
+The following have been reloaded with a version change:
+  1) python3/3.10.12 => python3/3.8.10
+
+WARNING: You are using pip version 21.0.1; however, version 24.0 is available.
+You should consider upgrading via the '/projectnb/textconv/distill/venv/bin/python -m pip install --upgrade pip' command.
+Traceback (most recent call last):
+  File "tools/train.py", line 106, in <module>
+    cfg.merge_from_file(args.cfg)
+  File "/projectnb/textconv/distill/venv/lib/python3.8/site-packages/yacs/config.py", line 211, in merge_from_file
+    with open(cfg_filename, "r") as f:
+FileNotFoundError: [Errno 2] No such file or directory: 'cifar100/_sldmse/r56r20/SLDMSE_r56r20_1.yaml'
+
+The following have been reloaded with a version change:
+  1) python3/3.10.12 => python3/3.8.10
+
+WARNING: You are using pip version 21.0.1; however, version 24.0 is available.
+You should consider upgrading via the '/projectnb/textconv/distill/venv/bin/python -m pip install --upgrade pip' command.
+Traceback (most recent call last):
+  File "tools/train.py", line 106, in <module>
+    cfg.merge_from_file(args.cfg)
+  File "/projectnb/textconv/distill/venv/lib/python3.8/site-packages/yacs/config.py", line 211, in merge_from_file
+    with open(cfg_filename, "r") as f:
+FileNotFoundError: [Errno 2] No such file or directory: 'imagenet/_sldmse/r50mnv1/SLDMSE_r50mnv1_1.yaml'
+WARNING: You are using pip version 21.0.1; however, version 24.0 is available.
+You should consider upgrading via the '/projectnb/textconv/distill/venv/bin/python -m pip install --upgrade pip' command.
+Traceback (most recent call last):
+  File "tools/train.py", line 106, in <module>
+    cfg.merge_from_file(args.cfg)
+  File "/projectnb/textconv/distill/venv/lib/python3.8/site-packages/yacs/config.py", line 211, in merge_from_file
+    with open(cfg_filename, "r") as f:
+FileNotFoundError: [Errno 2] No such file or directory: '/projectnb/textconv/distill/mdistiller/configs/cifar100/_bcpmse/testing_11.yaml'
+WARNING: You are using pip version 21.0.1; however, version 24.0 is available.
+You should consider upgrading via the '/projectnb/textconv/distill/venv/bin/python -m pip install --upgrade pip' command.
+Traceback (most recent call last):
+  File "tools/train.py", line 106, in <module>
+    cfg.merge_from_file(args.cfg)
+  File "/projectnb/textconv/distill/venv/lib/python3.8/site-packages/yacs/config.py", line 211, in merge_from_file
+    with open(cfg_filename, "r") as f:
+FileNotFoundError: [Errno 2] No such file or directory: '/projectnb/textconv/distill/mdistiller/configs/cifar100/_bcpmse/testing_12.yaml'

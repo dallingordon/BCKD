@@ -1,0 +1,1 @@
+This is going to hold experiments on Cifar100 with sldmse, and it is resnet56 teacher to resnet 20.  compare results to https://arxiv.org/pdf/2203.08679.pdf pg 6 on the top.

@@ -1,0 +1,3 @@
+#!/bin/bash
+qsub -N "dg_16avg" -v CONFIG="/projectnb/textconv/distill/mdistiller/configs/imagenet/_sldmse/r50mnv1/SLDMSE_r50mnv1_1.yaml" -e "/projectnb/textconv/distill/test16_avg.err" -o "/projectnb/textconv/distill/test16_avg.out" /projectnb/textconv/distill/scripts/submit10hr_16w.sh
+qsub -N "dg_32avg" -v CONFIG="/projectnb/textconv/distill/mdistiller/configs/imagenet/_sldmse/r50mnv1/SLDMSE_r50mnv1_32w.yaml" -e "/projectnb/textconv/distill/test32_avg.err" -o "/projectnb/textconv/distill/test32_avg.out" /projectnb/textconv/distill/scripts/submit10hr_32w.sh

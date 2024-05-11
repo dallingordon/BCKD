@@ -1,0 +1,3 @@
+#!/bin/bash
+qsub -N "dg_16w" -v CONFIG="/projectnb/textconv/distill/mdistiller/configs/imagenet/r50_mv1/kd_16.yaml" -e "/projectnb/textconv/distill/test16.err" -o "/projectnb/textconv/distill/test16.out" /projectnb/textconv/distill/scripts/submit10hr_16w.sh
+qsub -N "dg_32w" -v CONFIG="/projectnb/textconv/distill/mdistiller/configs/imagenet/r50_mv1/kd_32.yaml" -e "/projectnb/textconv/distill/test32.err" -o "/projectnb/textconv/distill/test32.out" /projectnb/textconv/distill/scripts/submit10hr_32w.sh

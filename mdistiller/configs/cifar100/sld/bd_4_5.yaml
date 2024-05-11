@@ -1,0 +1,17 @@
+EXPERIMENT:
+  NAME: "BD_4_5"
+  TAG: "sld,res32x4,res8x4"
+  PROJECT: "cifar100_baselines"
+DISTILLER:
+  TYPE: "BD"
+  TEACHER: "resnet32x4"
+  STUDENT: "resnet8x4"
+SOLVER:
+  BATCH_SIZE: 64
+  EPOCHS: 340
+  LR: 0.03
+  LR_DECAY_STAGES: [250, 280, 310]
+  LR_DECAY_RATE: 0.8
+  WEIGHT_DECAY: 0.0
+  MOMENTUM: 0.8
+  TYPE: "SGD"
